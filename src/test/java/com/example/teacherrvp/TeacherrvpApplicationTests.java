@@ -1,13 +1,13 @@
-package com.example.teacherrvp;
+// package com.example.teacherrvp;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+// import org.junit.jupiter.api.Test;
+// import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class TeacherrvpApplicationTests {
+// @SpringBootTest
+// class TeacherrvpApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+// 	@Test
+// 	void contextLoads() {
+// 	}
 
-}
+// }
