@@ -27,6 +27,9 @@ public class Teacher {
     @Column(name = "students_count", nullable = false)
     private Integer studentsCount;
 
+    @Column(name = "qualification", length = 200)
+    private String qualification;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

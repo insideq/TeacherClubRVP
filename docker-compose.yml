@@ -21,7 +21,7 @@ services:
   teacher-service:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     container_name: teacher-service
     ports:
       - "8081:8081"
