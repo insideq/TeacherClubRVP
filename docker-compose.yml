@@ -20,7 +20,7 @@ services:
 
   teacher-service:
     build:
-      context: .
+      context: ./teacherrvp
       dockerfile: dockerfile
     container_name: teacher-service
     ports:
@@ -32,6 +32,39 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - company-network
+
+  report-service:
+    build:
+      context: ./report-service
+      dockerfile: dockerfile
+    container_name: report-service
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/company
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - company-network
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: dockerfile
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      TEACHER_SERVICE_URL: http://teacher-service:8081
+      REPORT_SERVICE_URL: http://report-service:8082
+    depends_on:
+      - teacher-service
+      - report-service
     networks:
       - company-network
 
