@@ -3,15 +3,15 @@ services:
     image: postgres:16
     container_name: company_postgres
     environment:
-      POSTGRES_DB: company
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,16 +22,21 @@ services:
     build:
       context: ./teacherrvp
       dockerfile: dockerfile
-    container_name: teacher-service
-    ports:
-      - "8081:8081"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/company
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 2
     networks:
       - company-network
 
@@ -39,16 +44,21 @@ services:
     build:
       context: ./report-service
       dockerfile: dockerfile
-    container_name: report-service
-    ports:
-      - "8082:8082"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/company
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      replicas: 2
     networks:
       - company-network
 
@@ -59,12 +69,15 @@ services:
     container_name: gateway
     ports:
       - "8080:8080"
-    environment:
-      TEACHER_SERVICE_URL: http://teacher-service:8081
-      REPORT_SERVICE_URL: http://report-service:8082
     depends_on:
       - teacher-service
       - report-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - company-network
 
