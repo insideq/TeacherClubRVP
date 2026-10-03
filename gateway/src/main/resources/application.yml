@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+
+  cloud:
+    gateway:
+      routes:
+        - id: teacher-service
+          uri: lb://teacher-service
+          predicates:
+            - Path=/api/teachers/**
+
+        - id: report-service
+          uri: lb://report-service
+          predicates:
+            - Path=/api/reports/**
+
+    discovery:
+      client:
+        simple:
+          instances:
+            teacher-service:
+              - uri: http://rvplab-teacher-service-1:8081
+              - uri: http://rvplab-teacher-service-2:8081
+            report-service:
+              - uri: http://rvplab-report-service-1:8082
+              - uri: http://rvplab-report-service-2:8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
