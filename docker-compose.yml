@@ -26,17 +26,24 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      GATEWAY_URL: http://gateway:8080
+      ELASTIC_APM_SERVICE_NAME: teacher-service
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
+      ELASTIC_APM_SECRET_TOKEN: secret
+      ELASTIC_APM_ENVIRONMENT: dev
+      ELASTIC_APM_APPLICATION_PACKAGES: com.example
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/apm-agent.jar"
+    volumes:
+      - ./apm-agent.jar:/app/apm-agent.jar:ro
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 2
       start_period: 40s
-    deploy:
-      replicas: 2
     networks:
       - company-network
 
@@ -45,20 +52,24 @@ services:
       context: ./report-service
       dockerfile: dockerfile
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      TEACHER_SERVICE_URL: http://gateway:8080
+      GATEWAY_URL: http://gateway:8080
+      ELASTIC_APM_SERVICE_NAME: report-service
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
+      ELASTIC_APM_SECRET_TOKEN: secret
+      ELASTIC_APM_ENVIRONMENT: dev
+      ELASTIC_APM_APPLICATION_PACKAGES: com.example
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/apm-agent.jar"
+    volumes:
+      - ./apm-agent.jar:/app/apm-agent.jar:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      - gateway
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 2
       start_period: 40s
-    deploy:
-      replicas: 2
     networks:
       - company-network
 
@@ -66,12 +77,17 @@ services:
     build:
       context: ./gateway
       dockerfile: dockerfile
-    container_name: gateway
     ports:
       - "8080:8080"
-    depends_on:
-      - teacher-service
-      - report-service
+    environment:
+      ELASTIC_APM_SERVICE_NAME: gateway
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
+      ELASTIC_APM_SECRET_TOKEN: secret
+      ELASTIC_APM_ENVIRONMENT: dev
+      ELASTIC_APM_APPLICATION_PACKAGES: com.example
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/apm-agent.jar"
+    volumes:
+      - ./apm-agent.jar:/app/apm-agent.jar:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -81,9 +97,71 @@ services:
     networks:
       - company-network
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - company-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.0
+    container_name: logstash
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - company-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - company-network
+
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:8.15.0
+    container_name: apm-server
+    ports:
+      - "8200:8200"
+    environment:
+      - output.elasticsearch.hosts=["http://elasticsearch:9200"]
+      - apm-server.host=0.0.0.0:8200
+      - apm-server.secret_token=secret
+      - apm-server.rum.enabled=true
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - company-network
+
 networks:
   company-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  elasticsearch_data:
