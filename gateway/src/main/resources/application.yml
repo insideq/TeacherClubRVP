@@ -33,6 +33,17 @@ spring:
                 statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
                 methods: GET
 
+        - id: file-storage-service
+          uri: lb://file-storage-service
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT
+                methods: GET
+
 instance:
   id: ${HOSTNAME:local}
 

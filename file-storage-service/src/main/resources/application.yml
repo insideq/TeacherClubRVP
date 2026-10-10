@@ -1,0 +1,45 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: file-storage-service
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# S3-совместимое хранилище. endpoints — список нод кластера MinIO:
+# они равнозначны, и сервис сам переключается между ними при сбое.
+storage:
+  s3:
+    endpoints: ${S3_ENDPOINTS:http://localhost:9000}
+    region: ${S3_REGION:us-east-1}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:minioadmin}
+    bucket: ${S3_BUCKET:reports}
+
+gateway:
+  url: ${GATEWAY_URL:http://gateway:8080}
+
+instance:
+  id: ${HOSTNAME:local}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.example.filestorageservice: DEBUG

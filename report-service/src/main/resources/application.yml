@@ -31,3 +31,6 @@ springdoc:
 
 teacher-service:
   url: ${TEACHER_SERVICE_URL:http://localhost:8080}
+
+file-storage:
+  url: ${FILE_STORAGE_URL:http://localhost:8080}

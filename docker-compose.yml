@@ -53,6 +53,7 @@ services:
       dockerfile: dockerfile
     environment:
       TEACHER_SERVICE_URL: http://gateway:8080
+      FILE_STORAGE_URL: http://gateway:8080
       GATEWAY_URL: http://gateway:8080
       ELASTIC_APM_SERVICE_NAME: report-service
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
@@ -94,6 +95,96 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - company-network
+
+  # --- Кластер MinIO: 4 ноды = 4 "диска" в одном erasure-наборе (2 данных + 2 чётности) ---
+  minio1:
+    image: elestio/minio:latest
+    container_name: minio1
+    user: root
+    command: server --address ":9000" --console-address ":9001" http://minio{1...4}:9000/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio1_data:/data
+    networks:
+      - company-network
+
+  minio2:
+    image: elestio/minio:latest
+    container_name: minio2
+    user: root
+    command: server --address ":9000" --console-address ":9001" http://minio{1...4}:9000/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio2_data:/data
+    networks:
+      - company-network
+
+  minio3:
+    image: elestio/minio:latest
+    container_name: minio3
+    user: root
+    command: server --address ":9000" --console-address ":9001" http://minio{1...4}:9000/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio3_data:/data
+    networks:
+      - company-network
+
+  minio4:
+    image: elestio/minio:latest
+    container_name: minio4
+    user: root
+    command: server --address ":9000" --console-address ":9001" http://minio{1...4}:9000/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio4_data:/data
+    networks:
+      - company-network
+
+  file-storage-service:
+    build:
+      context: ./file-storage-service
+      dockerfile: dockerfile
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      S3_ENDPOINTS: http://minio1:9000,http://minio2:9000,http://minio3:9000,http://minio4:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: reports
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/apm-agent.jar"
+      ELASTIC_APM_SERVICE_NAME: file-storage-service
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
+      ELASTIC_APM_SECRET_TOKEN: secret
+      ELASTIC_APM_ENVIRONMENT: dev
+      ELASTIC_APM_APPLICATION_PACKAGES: com.example
+    volumes:
+      - ./apm-agent.jar:/app/apm-agent.jar:ro
+    depends_on:
+      - gateway
+      - minio1
+      - minio2
+      - minio3
+      - minio4
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8083/actuator/health" ]
+      interval: 5s
+      timeout: 3s
+      retries: 2
+      start_period: 40s
     networks:
       - company-network
 
@@ -165,3 +256,7 @@ networks:
 volumes:
   postgres_data:
   elasticsearch_data:
+  minio1_data:
+  minio2_data:
+  minio3_data:
+  minio4_data:

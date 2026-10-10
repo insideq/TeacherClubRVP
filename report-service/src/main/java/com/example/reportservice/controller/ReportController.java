@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,6 +29,20 @@ public class ReportController {
         try {
             ReportResponse report = service.buildTeacherReport();
             return ResponseEntity.ok(report);
+        } catch (Exception e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
+        }
+    }
+
+    @PostMapping("/teachers/csv")
+    @Operation(summary = "Сформировать отчёт в CSV и сохранить в файловое хранилище")
+    public ResponseEntity<?> teachersReportCsv() {
+        try {
+            String filename = service.buildAndSaveCsvReport();
+            Map<String, Object> response = new HashMap<>();
+            response.put("filename", filename);
+            response.put("downloadUrl", "/api/files/" + filename);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
         }

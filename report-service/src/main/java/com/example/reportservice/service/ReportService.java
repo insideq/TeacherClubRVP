@@ -1,6 +1,7 @@
 package com.example.reportservice.service;
 
 import com.example.reportservice.client.TeacherServiceClient;
+import com.example.reportservice.client.FileStorageClient;
 import com.example.reportservice.dto.ReportResponse;
 import com.example.reportservice.dto.TeacherDto;
 import com.example.reportservice.dto.TeacherReportRow;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 public class ReportService {
 
     private final TeacherServiceClient teacherServiceClient;
+    private final FileStorageClient fileStorageClient;
 
     public ReportResponse buildTeacherReport() {
         List<TeacherDto> teachers = teacherServiceClient.getAllTeachers();
@@ -46,5 +48,36 @@ public class ReportService {
                 .grandTotal(grandTotal)
                 .teachersCount(rows.size())
                 .build();
+    }
+
+    public String buildAndSaveCsvReport() {
+        ReportResponse report = buildTeacherReport();
+        String csv = convertToCsv(report);
+
+        // Отправка в file-storage-service
+        String filename = "report-" + System.currentTimeMillis() + ".csv";
+
+        return fileStorageClient.uploadCsv(filename, csv);
+    }
+
+    private String convertToCsv(ReportResponse report) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("fullName,totalStudents\n");
+        for (TeacherReportRow row : report.getRows()) {
+            sb.append(escapeCsv(row.getFullName()))
+                    .append(",")
+                    .append(row.getTotalStudents())
+                    .append("\n");
+        }
+        sb.append("TOTAL,").append(report.getGrandTotal()).append("\n");
+        return sb.toString();
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }
