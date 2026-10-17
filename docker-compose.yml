@@ -73,6 +73,7 @@ services:
       dockerfile: dockerfile
     environment:
       TEACHER_SERVICE_URL: http://gateway:8080
+      FILE_STORAGE_URL: http://gateway:8080
       GATEWAY_URL: http://gateway:8080
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672

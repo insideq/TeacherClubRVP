@@ -1,5 +1,7 @@
 package com.example.reportservice.controller;
 
+import com.example.reportservice.client.ReportNotReadyException;
+import com.example.reportservice.client.StorageUnavailableException;
 import com.example.reportservice.dto.ReportResponse;
 import com.example.reportservice.messaging.MessagingUnavailableException;
 import com.example.reportservice.service.ReportService;
@@ -10,10 +12,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,6 +27,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Tag(name = "Отчёты", description = "Формирование отчётов по руководителям кружков")
 public class ReportController {
+
+    private static final long MAX_WAIT_SECONDS = 60;
 
     private final ReportService service;
 
@@ -53,6 +60,37 @@ public class ReportController {
             return ResponseEntity.accepted().body(response);
         } catch (MessagingUnavailableException e) {
             return error(HttpStatus.SERVICE_UNAVAILABLE, "QUEUE_UNAVAILABLE", e.getMessage());
+        } catch (Exception e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
+        }
+    }
+
+    @GetMapping("/stored/{reportId}")
+    @Operation(summary = "Забрать сохранённый отчёт из хранилища (содержимое + метаданные, параллельно)")
+    public ResponseEntity<?> storedReport(@PathVariable String reportId) {
+        try {
+            return ResponseEntity.ok(service.fetchStoredReport(reportId));
+        } catch (ReportNotReadyException e) {
+            return error(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", e.getMessage());
+        } catch (StorageUnavailableException e) {
+            return error(HttpStatus.SERVICE_UNAVAILABLE, "STORAGE_UNAVAILABLE", e.getMessage());
+        } catch (Exception e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
+        }
+    }
+
+    @GetMapping("/stored/{reportId}/await")
+    @Operation(summary = "Дождаться появления отчёта в хранилище (асинхронный опрос) и вернуть его")
+    public ResponseEntity<?> awaitStoredReport(
+            @PathVariable String reportId,
+            @RequestParam(name = "timeoutSeconds", defaultValue = "10") long timeoutSeconds) {
+        try {
+            long boundedTimeout = Math.min(Math.max(timeoutSeconds, 1), MAX_WAIT_SECONDS);
+            return ResponseEntity.ok(service.awaitStoredReport(reportId, Duration.ofSeconds(boundedTimeout)));
+        } catch (ReportNotReadyException e) {
+            return error(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", e.getMessage());
+        } catch (StorageUnavailableException e) {
+            return error(HttpStatus.SERVICE_UNAVAILABLE, "STORAGE_UNAVAILABLE", e.getMessage());
         } catch (Exception e) {
             return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
         }
