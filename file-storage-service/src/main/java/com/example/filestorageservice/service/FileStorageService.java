@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -77,6 +78,28 @@ public class FileStorageService {
         return objectKey;
     }
 
+    /**
+     * Сохраняет готовый текст (например, CSV из очереди) под заданным ключом.
+     * Ключ задаёт вызывающий — так обработка сообщения становится идемпотентной.
+     * fromBytes (в отличие от потока) можно безопасно переиспользовать при failover между нодами.
+     */
+    public void storeText(String objectKey, String content, String contentType) throws IOException {
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        try {
+            ensureBucket();
+            cluster.execute(client -> client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucket())
+                            .key(objectKey)
+                            .contentType(contentType)
+                            .build(),
+                    RequestBody.fromBytes(bytes)));
+        } catch (SdkException e) {
+            throw new IOException("S3 putObject failed: " + e.getMessage(), e);
+        }
+        log.info("Stored object {}/{} ({} bytes)", bucket(), objectKey, bytes.length);
+    }
+
     public byte[] load(String objectKey) throws IOException {
         try {
             ensureBucket();
@@ -118,7 +141,7 @@ public class FileStorageService {
                 .toList());
     }
 
-    private boolean exists(String objectKey) {
+    public boolean exists(String objectKey) {
         try {
             cluster.execute(client -> client.headObject(
                     HeadObjectRequest.builder().bucket(bucket()).key(objectKey).build()));

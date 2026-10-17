@@ -1,16 +1,19 @@
 package com.example.reportservice.service;
 
 import com.example.reportservice.client.TeacherServiceClient;
-import com.example.reportservice.client.FileStorageClient;
 import com.example.reportservice.dto.ReportResponse;
 import com.example.reportservice.dto.TeacherDto;
 import com.example.reportservice.dto.TeacherReportRow;
+import com.example.reportservice.messaging.ReportMessage;
+import com.example.reportservice.messaging.ReportPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,7 +21,7 @@ import java.util.stream.Collectors;
 public class ReportService {
 
     private final TeacherServiceClient teacherServiceClient;
-    private final FileStorageClient fileStorageClient;
+    private final ReportPublisher reportPublisher;
 
     public ReportResponse buildTeacherReport() {
         List<TeacherDto> teachers = teacherServiceClient.getAllTeachers();
@@ -50,14 +53,28 @@ public class ReportService {
                 .build();
     }
 
-    public String buildAndSaveCsvReport() {
+    /**
+     * Считает отчёт, публикует его в очередь и сразу возвращает идентификатор.
+     * Файл появится в хранилище асинхронно; ключ детерминированный — reportId + ".csv",
+     * поэтому клиент может просто дождаться появления файла по этому адресу.
+     */
+    public ReportSubmission publishCsvReport() {
         ReportResponse report = buildTeacherReport();
-        String csv = convertToCsv(report);
 
-        // Отправка в file-storage-service
-        String filename = "report-" + System.currentTimeMillis() + ".csv";
+        String reportId = UUID.randomUUID().toString();
+        String filename = "report-" + Instant.now().toEpochMilli() + ".csv";
 
-        return fileStorageClient.uploadCsv(filename, csv);
+        ReportMessage message = new ReportMessage(
+                reportId,
+                filename,
+                convertToCsv(report),
+                Instant.now(),
+                report.getTeachersCount(),
+                report.getGrandTotal());
+
+        reportPublisher.publish(message);
+
+        return new ReportSubmission(reportId, filename, "/api/files/" + reportId + ".csv");
     }
 
     private String convertToCsv(ReportResponse report) {
@@ -79,5 +96,8 @@ public class ReportService {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    public record ReportSubmission(String reportId, String filename, String downloadUrl) {
     }
 }

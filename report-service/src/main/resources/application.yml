@@ -5,11 +5,25 @@ spring:
   application:
     name: report-service
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
 instance:
   id: ${HOSTNAME:local}
 
 gateway:
   url: ${GATEWAY_URL:http://localhost:8080}
+
+queue:
+  reports:
+    confirm-timeout-seconds: ${QUEUE_CONFIRM_TIMEOUT:5}
 
 management:
   tracing:
@@ -31,6 +45,3 @@ springdoc:
 
 teacher-service:
   url: ${TEACHER_SERVICE_URL:http://localhost:8080}
-
-file-storage:
-  url: ${FILE_STORAGE_URL:http://localhost:8080}

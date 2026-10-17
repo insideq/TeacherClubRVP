@@ -1,7 +1,9 @@
 package com.example.reportservice.controller;
 
 import com.example.reportservice.dto.ReportResponse;
+import com.example.reportservice.messaging.MessagingUnavailableException;
 import com.example.reportservice.service.ReportService;
+import com.example.reportservice.service.ReportService.ReportSubmission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -35,14 +37,22 @@ public class ReportController {
     }
 
     @PostMapping("/teachers/csv")
-    @Operation(summary = "Сформировать отчёт в CSV и сохранить в файловое хранилище")
+    @Operation(summary = "Сформировать отчёт и отправить его в хранилище через очередь (асинхронно)")
     public ResponseEntity<?> teachersReportCsv() {
         try {
-            String filename = service.buildAndSaveCsvReport();
+            ReportSubmission submission = service.publishCsvReport();
+
             Map<String, Object> response = new HashMap<>();
-            response.put("filename", filename);
-            response.put("downloadUrl", "/api/files/" + filename);
-            return ResponseEntity.ok(response);
+            response.put("reportId", submission.reportId());
+            response.put("status", "PENDING");
+            response.put("filename", submission.filename());
+            response.put("downloadUrl", submission.downloadUrl());
+            response.put("note", "Отчёт отправлен в очередь; файл появится в хранилище асинхронно");
+
+            // 202 Accepted: запрос принят, обработка ещё идёт
+            return ResponseEntity.accepted().body(response);
+        } catch (MessagingUnavailableException e) {
+            return error(HttpStatus.SERVICE_UNAVAILABLE, "QUEUE_UNAVAILABLE", e.getMessage());
         } catch (Exception e) {
             return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
         }
@@ -51,8 +61,8 @@ public class ReportController {
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String code, String message) {
         Map<String, Object> body = new HashMap<>();
         body.put("code", code);
-        body.put("message", message);
         body.put("status", status.value());
+        body.put("message", message);
         return ResponseEntity.status(status).body(body);
     }
 }

@@ -8,6 +8,11 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 # S3-совместимое хранилище. endpoints — список нод кластера MinIO:
 # они равнозначны, и сервис сам переключается между ними при сбое.

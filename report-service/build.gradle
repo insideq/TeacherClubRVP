@@ -22,6 +22,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+	// Очередь RabbitMQ: отчёт уезжает в файловое хранилище сообщением, а не по HTTP
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
+
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
