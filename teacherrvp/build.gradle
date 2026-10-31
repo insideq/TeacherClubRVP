@@ -30,6 +30,9 @@ dependencies {
 	implementation 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
 
+	// Наша библиотека параллельной сортировки слиянием
+	implementation project(':merge-sort-lib')
+
 	// PostgreSQL
 	runtimeOnly 'org.postgresql:postgresql'
 

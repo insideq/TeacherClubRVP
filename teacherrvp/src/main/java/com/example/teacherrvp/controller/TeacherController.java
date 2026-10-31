@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,52 @@ public class TeacherController {
         try {
             List<TeacherDto> result = service.getAll();
             return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
+        }
+    }
+
+    @GetMapping("/sorted")
+    @Operation(summary = "Данные пользователей, отсортированные параллельной сортировкой слиянием")
+    public ResponseEntity<?> getSorted(
+            @RequestParam(name = "sortBy", defaultValue = "id") String sortBy,
+            @RequestParam(name = "order", defaultValue = "asc") String order,
+            @RequestParam(name = "threads", defaultValue = "4") int threads) {
+        log.info("Instance [{}] handled GET /api/teachers/sorted sortBy={} order={} threads={}",
+                instanceId, sortBy, order, threads);
+        try {
+            return ResponseEntity.ok(service.getSorted(sortBy, order, threads));
+        } catch (Exception e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
+        }
+    }
+
+    @GetMapping("/sorted/benchmark")
+    @Operation(summary = "Замер сортировки при разном числе потоков (1, 2, 4, 8)")
+    public ResponseEntity<?> benchmark(
+            @RequestParam(name = "size", defaultValue = "100000") int size) {
+        try {
+            return ResponseEntity.ok(service.benchmark(size));
+        } catch (Exception e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
+        }
+    }
+
+    @GetMapping("/sorted/demo")
+    @Operation(summary = "Демонстрация на примере из задания: ids=3,2,6,9,2,3,5,8,2,1,11&threads=5")
+    public ResponseEntity<?> sortDemo(
+            @RequestParam(name = "ids") String ids,
+            @RequestParam(name = "threads", defaultValue = "5") int threads) {
+        try {
+            List<Integer> parsed = Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .filter(value -> !value.isEmpty())
+                    .map(Integer::valueOf)
+                    .toList();
+            return ResponseEntity.ok(service.sortDemo(parsed, threads));
+        } catch (NumberFormatException e) {
+            return error(HttpStatus.BAD_REQUEST, "BAD_IDS",
+                    "Параметр ids должен быть списком чисел через запятую, например 3,2,6,9");
         } catch (Exception e) {
             return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", e.getMessage());
         }

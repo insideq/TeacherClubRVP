@@ -1,1 +1,3 @@
 rootProject.name = 'teacherrvp'
+
+include 'merge-sort-lib'
