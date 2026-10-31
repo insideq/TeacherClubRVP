@@ -38,6 +38,41 @@ services:
     networks:
       - company-network
 
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      GATEWAY_URL: http://gateway:8080
+      JWT_SECRET: ${JWT_SECRET:-rvplab-super-secret-key-for-hs256-at-least-32-bytes}
+      # Пароли используются только при первом создании пользователей в БД
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      USER_PASSWORD: ${USER_PASSWORD:-user}
+      REPORT_SERVICE_PASSWORD: ${REPORT_SERVICE_PASSWORD:-report-service}
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JAVA_TOOL_OPTIONS: "-javaagent:/app/apm-agent.jar"
+      ELASTIC_APM_SERVICE_NAME: auth-service
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
+      ELASTIC_APM_SECRET_TOKEN: secret
+      ELASTIC_APM_ENVIRONMENT: dev
+      ELASTIC_APM_APPLICATION_PACKAGES: com.example
+    volumes:
+      - ./apm-agent.jar:/app/apm-agent.jar:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 40s
+    networks:
+      - company-network
+
   teacher-service:
     build:
       context: ./teacherrvp
@@ -47,6 +82,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       GATEWAY_URL: http://gateway:8080
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       ELASTIC_APM_SERVICE_NAME: teacher-service
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
       ELASTIC_APM_SECRET_TOKEN: secret
@@ -79,6 +115,10 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-rvp}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-rvp}
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SERVICE_AUTH_URL: http://gateway:8080/api/auth/login
+      SERVICE_AUTH_USER: report-service
+      SERVICE_AUTH_PASSWORD: ${REPORT_SERVICE_PASSWORD:-report-service}
       ELASTIC_APM_SERVICE_NAME: report-service
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
       ELASTIC_APM_SECRET_TOKEN: secret
@@ -106,6 +146,8 @@ services:
     ports:
       - "8080:8080"
     environment:
+      JWT_SECRET: ${JWT_SECRET:-rvplab-super-secret-key-for-hs256-at-least-32-bytes}
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       ELASTIC_APM_SERVICE_NAME: gateway
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
       ELASTIC_APM_SECRET_TOKEN: secret
@@ -194,6 +236,7 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: reports
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       JAVA_TOOL_OPTIONS: "-javaagent:/app/apm-agent.jar"
       ELASTIC_APM_SERVICE_NAME: file-storage-service
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
@@ -215,6 +258,28 @@ services:
       timeout: 3s
       retries: 2
       start_period: 40s
+    networks:
+      - company-network
+
+  # --- Наблюдаемость: Zipkin для трейсов, Prometheus для метрик ---
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - company-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - gateway
     networks:
       - company-network
 
@@ -287,6 +352,7 @@ volumes:
   postgres_data:
   elasticsearch_data:
   rabbitmq_data:
+  prometheus_data:
   minio1_data:
   minio2_data:
   minio3_data:

@@ -26,6 +26,10 @@ dependencies {
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
 
+	// Наблюдаемость: метрики в формате Prometheus и экспорт трейсов в Zipkin
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+
 	// PostgreSQL
 	runtimeOnly 'org.postgresql:postgresql'
 

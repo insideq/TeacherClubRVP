@@ -29,10 +29,13 @@ management:
   tracing:
     sampling:
       probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
@@ -48,3 +51,9 @@ teacher-service:
 
 file-storage:
   url: ${FILE_STORAGE_URL:http://localhost:8080}
+
+# Служебная учётная запись: report-service логинится в гейтвей
+service-auth:
+  login-url: ${SERVICE_AUTH_URL:http://localhost:8080/api/auth/login}
+  username: ${SERVICE_AUTH_USER:report-service}
+  password: ${SERVICE_AUTH_PASSWORD:report-service}

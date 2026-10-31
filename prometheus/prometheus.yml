@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Prometheus собирает /actuator/prometheus каждого сервиса напрямую,
+# минуя гейтвей.
+scrape_configs:
+  - job_name: gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['gateway:8080']
+
+  - job_name: auth-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['auth-service:8084']
+
+  - job_name: teacher-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['teacher-service:8081']
+
+  - job_name: report-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['report-service:8082']
+
+  - job_name: file-storage-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['file-storage-service:8083']

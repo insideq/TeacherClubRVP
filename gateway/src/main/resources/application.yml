@@ -11,6 +11,12 @@ spring:
         ttl: 5s
     gateway:
       routes:
+        # Вход и регистрация проксируются в отдельный auth-service
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+
         - id: teacher-service
           uri: lb://teacher-service
           predicates:
@@ -47,14 +53,22 @@ spring:
 instance:
   id: ${HOSTNAME:local}
 
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    ttl-minutes: ${JWT_TTL_MINUTES}
+
 management:
   tracing:
     sampling:
       probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always

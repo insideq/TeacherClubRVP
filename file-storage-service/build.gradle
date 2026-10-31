@@ -29,6 +29,12 @@ dependencies {
 	// Очередь RabbitMQ: отчёты приходят сообщениями, а не по HTTP
 	implementation 'org.springframework.boot:spring-boot-starter-amqp'
 
+	// Наблюдаемость: трейсы в Zipkin, метрики в Prometheus, логи в Logstash
+	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+
 	// AWS SDK v2 (S3 API). MinIO полностью совместим с S3:
 	// для настоящего AWS S3 достаточно поменять endpoint.
 	implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")

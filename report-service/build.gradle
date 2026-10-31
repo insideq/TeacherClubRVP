@@ -30,6 +30,10 @@ dependencies {
 	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
 	implementation 'org.apache.commons:commons-csv:1.11.0'
 
+	// Наблюдаемость: метрики в формате Prometheus и экспорт трейсов в Zipkin
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
